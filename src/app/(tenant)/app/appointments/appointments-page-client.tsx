@@ -38,6 +38,7 @@ import { useNavigationLoading } from "@/lib/routing/navigation-context";
 import { CAPABILITIES } from "@/lib/permissions/capabilities";
 import { formatDateTime } from "@/lib/utils/format-date";
 import type { Appointment } from "@/types/visitor";
+import { useDepartments } from "@/features/departments/hooks/use-departments";
 import type { AppointmentStatus } from "@/types/enums";
 
 function statusVariant(status: AppointmentStatus) {
@@ -110,6 +111,14 @@ export function AppointmentsPageClient() {
     }
   };
 
+  // The list endpoint returns department ids only; resolve names from the
+  // tenant's department list (cached for five minutes).
+  const departmentsQuery = useDepartments({ limit: 200 });
+  const departmentName = (a: Appointment) =>
+    a.departmentSummary?.name ||
+    departmentsQuery.data?.items.find((d) => d.id === a.departmentId)?.name ||
+    "";
+
   const columns: ColumnDef<Appointment>[] = [
     {
       accessorKey: "visitorNameSnapshot",
@@ -130,7 +139,9 @@ export function AppointmentsPageClient() {
       accessorKey: "departmentId",
       header: "Department",
       cell: ({ row }) => (
-        <span className="text-muted-foreground text-sm">{row.original.departmentId || "—"}</span>
+        <span className="text-muted-foreground text-sm">
+          {departmentName(row.original) || "—"}
+        </span>
       ),
     },
     {
@@ -186,7 +197,7 @@ export function AppointmentsPageClient() {
         </div>
         <div className="text-xs text-muted-foreground space-y-1">
           <p>Scheduled: {formatDateTime(appointment.scheduledDatetime)}</p>
-          {appointment.departmentId && <p>Department: {appointment.departmentId}</p>}
+          {departmentName(appointment) && <p>Department: {departmentName(appointment)}</p>}
         </div>
         <div className="flex gap-2 pt-2">
           <Tooltip>

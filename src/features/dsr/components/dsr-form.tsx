@@ -95,10 +95,10 @@ export function DSRForm({ dsr }: DSRFormProps) {
   } = useForm<DSRFormData>({
     resolver: zodResolver(dsrSchema),
     defaultValues: {
-      requesterName: dsr?.requesterName ?? "",
+      requesterName: dsr?.requesterName ?? dsr?.visitorProfileSummary?.fullName ?? "",
       requesterEmail: dsr?.requesterEmail ?? "",
-      type: (dsr?.type as DSRType) ?? "access",
-      description: dsr?.description ?? "",
+      type: (dsr?.requestType as DSRType) ?? "access",
+      description: dsr?.notes ?? "",
       status: (dsr?.status as DSRStatus) ?? "pending",
     },
   });
@@ -108,15 +108,15 @@ export function DSRForm({ dsr }: DSRFormProps) {
       if (isEditing && dsr) {
         await updateMutation.mutateAsync({
           status: data.status as DSRStatus,
-          description: data.description,
+          notes: data.description,
         });
         toast.success("Request updated");
       } else {
         await createMutation.mutateAsync({
           requesterName: data.requesterName,
           requesterEmail: data.requesterEmail || undefined,
-          type: data.type as DSRType,
-          description: data.description,
+          requestType: data.type as DSRType,
+          notes: data.description,
         });
         toast.success("Request created");
       }

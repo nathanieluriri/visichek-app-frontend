@@ -25,7 +25,7 @@ interface UseDataSubjectRequestsParams {
 
 interface UpdateDSRRequest {
   status?: string;
-  description?: string;
+  notes?: string;
 }
 
 /**

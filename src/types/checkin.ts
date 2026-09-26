@@ -250,6 +250,16 @@ export interface CheckinSubmitMultipartRequest {
   visitorLat?: number;
   visitorLng?: number;
   visitorLocationAccuracyM?: number;
+  /**
+   * Consent to the tenant's privacy notice. Required by the backend when the
+   * active notice's display mode is `active_consent`; the notice ids record
+   * which version the visitor accepted.
+   */
+  consentGranted?: boolean;
+  consentMethod?: string;
+  privacyNoticeId?: string;
+  privacyNoticeVersionId?: string;
+  consentAcceptedAt?: number;
 }
 
 /** Legacy JSON submit payload (kept for backend parity; not used by the kiosk UI). */
@@ -307,6 +317,16 @@ export interface CheckinSubmitByVisitorIdRequest {
   visitorLat?: number;
   visitorLng?: number;
   visitorLocationAccuracyM?: number;
+  /**
+   * Consent to the tenant's privacy notice. Required by the backend when the
+   * active notice's display mode is `active_consent`; the notice ids record
+   * which version the visitor accepted.
+   */
+  consentGranted?: boolean;
+  consentMethod?: string;
+  privacyNoticeId?: string;
+  privacyNoticeVersionId?: string;
+  consentAcceptedAt?: number;
 }
 
 /** Receptionist approve/reject payload. */
