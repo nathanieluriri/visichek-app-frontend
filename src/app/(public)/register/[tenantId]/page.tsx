@@ -51,6 +51,7 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { parsePhone } from "@/lib/constants/countries";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -75,6 +76,9 @@ import {
 import type { KycStatusScreenState } from "@/features/checkins";
 import { ApiError } from "@/types/api";
 import { usePublicTenantBranding } from "@/hooks/use-public-tenant-branding";
+import { usePublicPrivacyNotice } from "@/features/public-registration/hooks";
+import { PrivacyNoticeDisplay } from "@/features/public-registration/components";
+import type { PublicPrivacyNotice } from "@/types/public";
 import { requestUserLocation } from "@/lib/geolocation/user-location";
 import type {
   CheckinOut,
@@ -193,6 +197,10 @@ export default function KioskCheckinPage() {
   const [state, setState] = useState<KioskState>(INITIAL_STATE);
   const [stepError, setStepError] = useState<string | null>(null);
   const [phase, setPhase] = useState<KycPhase>({ kind: "idle" });
+  const noticeQ = usePublicPrivacyNotice(tenantId);
+  const notice = noticeQ.data ?? null;
+  const consentRequired = notice?.displayMode === "active_consent";
+  const [consented, setConsented] = useState(false);
 
   usePublicTenantBranding(tenantId);
 
@@ -346,11 +354,25 @@ export default function KioskCheckinPage() {
       visitorLat: location?.lat,
       visitorLng: location?.lng,
       visitorLocationAccuracyM: location?.accuracyM ?? undefined,
+      ...(notice && {
+        privacyNoticeId: notice.id,
+        privacyNoticeVersionId: notice.versionId,
+      }),
+      ...(consentRequired &&
+        consented && {
+          consentGranted: true,
+          consentMethod: "kiosk_checkbox",
+          consentAcceptedAt: Math.floor(Date.now() / 1000),
+        }),
     };
   }
 
   async function handleSubmit() {
     setStepError(null);
+    if (consentRequired && !consented) {
+      setStepError("Please accept the privacy notice to check in.");
+      return;
+    }
     setPhase({ kind: "submitting" });
     try {
       const location = await requestUserLocation();
@@ -591,6 +613,10 @@ export default function KioskCheckinPage() {
               onSubmit={handleSubmit}
               submitting={phase.kind === "submitting"}
               error={stepError}
+              notice={notice}
+              consentRequired={consentRequired}
+              consented={consented}
+              onConsentChange={setConsented}
             />
           )}
         </CardContent>
@@ -1006,6 +1032,10 @@ function ReviewStep({
   onSubmit,
   submitting,
   error,
+  notice,
+  consentRequired,
+  consented,
+  onConsentChange,
 }: {
   state: KioskState;
   fields: RequiredField[];
@@ -1015,6 +1045,10 @@ function ReviewStep({
   onSubmit: () => void;
   submitting: boolean;
   error: string | null;
+  notice: PublicPrivacyNotice | null;
+  consentRequired: boolean;
+  consented: boolean;
+  onConsentChange: (value: boolean) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -1055,6 +1089,22 @@ function ReviewStep({
         to verify, the verification widget opens right after you submit.
       </div>
 
+      {notice && <PrivacyNoticeDisplay notice={notice} />}
+      {consentRequired && (
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="kiosk-consent"
+            checked={consented}
+            onCheckedChange={(v) => onConsentChange(v === true)}
+            className="mt-0.5"
+          />
+          <Label htmlFor="kiosk-consent" className="text-sm font-normal leading-snug">
+            I have read the privacy notice and agree to my details being
+            processed for this visit.
+          </Label>
+        </div>
+      )}
+
       {error && (
         <p
           role="alert"
@@ -1085,6 +1135,7 @@ function ReviewStep({
                 onClick={onSubmit}
                 isLoading={submitting}
                 loadingText="Submitting…"
+                disabled={consentRequired && !consented}
               >
                 Submit check-in
               </LoadingButton>
@@ -1119,7 +1170,10 @@ function renderReviewValue(
   enums: ReturnType<typeof useCheckinEnumsForTenant>["data"],
 ): string {
   const raw = String(value ?? "");
-  if (!field.enumKind || !enums) return raw;
+  if (!field.enumKind) {
+    return field.options?.find((o) => o.value === raw)?.label ?? raw;
+  }
+  if (!enums) return raw;
   const bundle = enums.enums[field.enumKind];
   const match = bundle?.options.find((o) => o.value === raw);
   return match?.label ?? raw;

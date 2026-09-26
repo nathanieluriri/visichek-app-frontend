@@ -191,6 +191,18 @@ export function useSubmitCheckin(args: {
         );
       }
 
+      if (typeof request.consentGranted === "boolean") {
+        form.append("consent_granted", String(request.consentGranted));
+      }
+      if (request.consentMethod) form.append("consent_method", request.consentMethod);
+      if (request.privacyNoticeId) form.append("privacy_notice_id", request.privacyNoticeId);
+      if (request.privacyNoticeVersionId) {
+        form.append("privacy_notice_version_id", request.privacyNoticeVersionId);
+      }
+      if (typeof request.consentAcceptedAt === "number") {
+        form.append("consent_accepted_at", String(request.consentAcceptedAt));
+      }
+
       return apiPost<CheckinOut>(path, form);
     },
   });
@@ -259,6 +271,15 @@ export function useSubmitCheckinByVisitorId(args: {
       }
       if (typeof request.visitorLocationAccuracyM === "number") {
         payload.visitorLocationAccuracyM = request.visitorLocationAccuracyM;
+      }
+      for (const key of [
+        "consentGranted",
+        "consentMethod",
+        "privacyNoticeId",
+        "privacyNoticeVersionId",
+        "consentAcceptedAt",
+      ] as const) {
+        if (request[key] !== undefined) payload[key] = request[key];
       }
       return apiPost<CheckinOut>(checkinSubmitByVisitorIdPath(tenantId), payload);
     },

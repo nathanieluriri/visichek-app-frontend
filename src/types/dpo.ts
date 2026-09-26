@@ -1,23 +1,34 @@
 import type { DSRType, DSRStatus, DeletionAction, NoticeDisplayMode } from "./enums";
 
 // ── Data Subject Requests ─────────────────────────────────────────────
+/** A DSR as `GET /v1/dsr` returns it (camelCase of the backend's `DSROut`). */
 export interface DataSubjectRequest {
   id: string;
   tenantId: string;
-  requesterName: string;
-  requesterEmail?: string;
-  type: DSRType;
+  visitorProfileId: string;
+  requestType: DSRType;
   status: DSRStatus;
-  description?: string;
-  createdAt: number;
-  updatedAt: number;
+  requesterName?: string | null;
+  requesterEmail?: string | null;
+  notes?: string | null;
+  slaDeadline?: number | null;
+  receivedAt?: number | null;
+  dateCreated?: number | null;
+  resolvedAt?: number | null;
+  visitorProfileSummary?: {
+    id: string;
+    fullName?: string | null;
+    phone?: string | null;
+    emailAddress?: string | null;
+  } | null;
 }
 
 export interface CreateDSRRequest {
+  visitorProfileId?: string;
   requesterName: string;
   requesterEmail?: string;
-  type: DSRType;
-  description?: string;
+  requestType: DSRType;
+  notes?: string;
 }
 
 // ── Retention Policies ────────────────────────────────────────────────

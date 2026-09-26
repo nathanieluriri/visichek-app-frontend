@@ -337,6 +337,7 @@ export interface Appointment {
   branchId?: string;
   /** Phase 4 — see VisitSession. May be null for branch-scoped viewers. */
   branchSummary?: { id: string; name: string; isActive?: boolean } | null;
+  departmentSummary?: { id: string; name?: string | null; code?: string | null } | null;
   visitorNameSnapshot?: string;
   visitorPhoneSnapshot?: string;
   hostNameSnapshot?: string;

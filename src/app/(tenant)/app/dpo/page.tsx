@@ -50,6 +50,10 @@ function statusVariant(status: DSRStatus) {
   }
 }
 
+const humanize = (value?: string | null) => (value ?? "").replace(/_/g, " ");
+const requesterOf = (dsr: DataSubjectRequest) =>
+  dsr.requesterName || dsr.visitorProfileSummary?.fullName || "Unknown requester";
+
 export default function DPOPage() {
   const { hasCapability } = useCapabilities();
   const canCreate = hasCapability(CAPABILITIES.DSR_CREATE);
@@ -84,13 +88,13 @@ export default function DPOPage() {
     {
       accessorKey: "requesterName",
       header: "Requester",
-      cell: ({ row }) => <span className="font-medium text-sm">{row.original.requesterName}</span>,
+      cell: ({ row }) => <span className="font-medium text-sm">{requesterOf(row.original)}</span>,
     },
     {
       accessorKey: "type",
       header: "Type",
       cell: ({ row }) => (
-        <span className="text-sm capitalize">{row.original.type.replace(/_/g, " ")}</span>
+        <span className="text-sm capitalize">{humanize(row.original.requestType)}</span>
       ),
     },
     {
@@ -98,16 +102,16 @@ export default function DPOPage() {
       header: "Status",
       cell: ({ row }) => (
         <Badge variant={statusVariant(row.original.status)}>
-          {row.original.status.replace(/_/g, " ")}
+          {humanize(row.original.status)}
         </Badge>
       ),
     },
     {
-      accessorKey: "createdAt",
+      id: "receivedAt",
       header: "Submitted",
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {formatDateTime(row.original.createdAt)}
+          {formatDateTime(row.original.receivedAt ?? row.original.dateCreated ?? 0)}
         </span>
       ),
     },
@@ -129,13 +133,13 @@ export default function DPOPage() {
   const mobileCard = (dsr: DataSubjectRequest) => (
     <div className="rounded-lg border p-4 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="font-medium text-sm">{dsr.requesterName}</span>
+        <span className="font-medium text-sm">{requesterOf(dsr)}</span>
         <Badge variant={statusVariant(dsr.status)}>
-          {dsr.status.replace(/_/g, " ")}
+          {humanize(dsr.status)}
         </Badge>
       </div>
       <div className="text-sm text-muted-foreground capitalize">
-        {dsr.type.replace(/_/g, " ")}
+        {humanize(dsr.requestType)}
       </div>
       <RowActions
         dsr={dsr}
@@ -234,7 +238,7 @@ export default function DPOPage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Data Subject Request"
-        description={`Are you sure you want to delete the request from "${dsrToDelete?.requesterName}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete the request from "${dsrToDelete ? requesterOf(dsrToDelete) : ""}"? This action cannot be undone.`}
         confirmLabel="Delete"
         variant="destructive"
         isLoading={false}
