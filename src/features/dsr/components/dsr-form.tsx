@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
@@ -30,6 +31,7 @@ import {
   useUpdateDSR,
 } from "@/features/dsr/hooks/use-dsr";
 import type { DataSubjectRequest } from "@/types/dpo";
+import { VisitorProfilePicker, type PickedVisitor } from "./visitor-profile-picker";
 import type { DSRStatus, DSRType } from "@/types/enums";
 
 const DSR_TYPES = [
@@ -47,6 +49,7 @@ const DSR_STATUSES = [
 ] as const;
 
 const dsrSchema = z.object({
+  visitorProfileId: z.string(),
   requesterName: z.string().trim().min(1, "Requester name is required"),
   requesterEmail: z
     .string()
@@ -57,6 +60,11 @@ const dsrSchema = z.object({
   type: z.enum(DSR_TYPES),
   description: z.string().optional(),
   status: z.enum(DSR_STATUSES),
+});
+
+// A field rule, not an object refine, so the message shows alongside the others.
+const createSchema = dsrSchema.extend({
+  visitorProfileId: z.string().min(1, "Choose the visitor this request is about"),
 });
 
 type DSRFormData = z.infer<typeof dsrSchema>;
@@ -86,15 +94,20 @@ export function DSRForm({ dsr }: DSRFormProps) {
   const createMutation = useCreateDSR();
   const updateMutation = useUpdateDSR(dsr?.id ?? "");
   const isEditing = !!dsr;
+  const [visitor, setVisitor] = useState<PickedVisitor | null>(null);
 
   const {
     register,
     handleSubmit,
     control,
+    setValue,
+    clearErrors,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<DSRFormData>({
-    resolver: zodResolver(dsrSchema),
+    resolver: zodResolver(isEditing ? dsrSchema : createSchema),
     defaultValues: {
+      visitorProfileId: dsr?.visitorProfileId ?? "",
       requesterName: dsr?.requesterName ?? dsr?.visitorProfileSummary?.fullName ?? "",
       requesterEmail: dsr?.requesterEmail ?? "",
       type: (dsr?.requestType as DSRType) ?? "access",
@@ -102,6 +115,17 @@ export function DSRForm({ dsr }: DSRFormProps) {
       status: (dsr?.status as DSRStatus) ?? "pending",
     },
   });
+
+  // The backend files every DSR against a visitor profile, so a new request
+  // needs one picked; the requester fields default to that visitor's details.
+  const pickVisitor = (v: PickedVisitor | null) => {
+    setVisitor(v);
+    setValue("visitorProfileId", v?.id ?? "");
+    if (!v) return;
+    clearErrors("visitorProfileId");
+    if (!getValues("requesterName")) setValue("requesterName", v.fullName, { shouldValidate: true });
+    if (!getValues("requesterEmail") && v.email) setValue("requesterEmail", v.email, { shouldValidate: true });
+  };
 
   const onSubmit = handleSubmit(async (data) => {
     try {
@@ -113,6 +137,7 @@ export function DSRForm({ dsr }: DSRFormProps) {
         toast.success("Request updated");
       } else {
         await createMutation.mutateAsync({
+          visitorProfileId: data.visitorProfileId,
           requesterName: data.requesterName,
           requesterEmail: data.requesterEmail || undefined,
           requestType: data.type as DSRType,
@@ -168,6 +193,28 @@ export function DSRForm({ dsr }: DSRFormProps) {
       />
 
       <form onSubmit={onSubmit} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="visitorProfile">Visitor{isEditing ? "" : " *"}</Label>
+          {isEditing ? (
+            <p className="min-h-[44px] rounded-md border bg-muted/30 px-3 py-2.5 text-sm">
+              {dsr?.visitorProfileSummary?.fullName || dsr?.requesterName || "Unknown visitor"}
+            </p>
+          ) : (
+            <VisitorProfilePicker
+              id="visitorProfile"
+              value={visitor}
+              onChange={pickVisitor}
+              invalid={!!errors.visitorProfileId}
+              describedBy={errors.visitorProfileId ? "error-visitorProfile" : undefined}
+            />
+          )}
+          {errors.visitorProfileId && (
+            <p id="error-visitorProfile" className="text-sm text-destructive" role="alert">
+              {errors.visitorProfileId.message}
+            </p>
+          )}
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="requesterName">Requester name *</Label>
           <Input
